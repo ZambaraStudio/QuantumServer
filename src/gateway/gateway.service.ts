@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-// import { DynamoDBService } from 'src/dynamodb/dynamodb.service';
+import { DynamoDBService } from 'src/dynamodb/dynamodb.service';
 import { Gateway } from './gateway';
 
 @Injectable()

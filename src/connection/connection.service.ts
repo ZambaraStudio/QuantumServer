@@ -6,10 +6,15 @@ import { Injectable } from '@nestjs/common';
 
 
 
+class playerData{
+    playerId : string
+}
+
+
 class SocketConnection {
     socketId: string;
     socket: Socket;
-    playerId?: string;
+    player?: playerData;
   }
   
 
@@ -32,8 +37,8 @@ export class ConnectionService {
 
    connectUserToSocket(socket: Socket, userId: string){
 
-    const cliuentConnection = this.socketConnections.get(socket.id)
-
+    const socketConnection = this.socketConnections.get(socket.id)
+    
 
 
 
@@ -47,3 +52,6 @@ export class ConnectionService {
 
 
 }
+
+
+// sokets unda mivabarat useri

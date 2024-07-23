@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { ConnectionService } from 'src/connection/connection.service';
-// import { DynamoDBService } from 'src/dynamodb/dynamodb.service';
+import { DynamoDBService } from 'src/dynamodb/dynamodb.service';
 import { GatewayService } from 'src/gateway/gateway.service';
 
 @Injectable()
 export class ProcessService {
 
   constructor(
-    // private readonly dynamoDBService: DynamoDBService,
+    private readonly dynamoDBService: DynamoDBService,
     private readonly gatewayService: GatewayService,
     private readonly connectionService: ConnectionService,
     ){
