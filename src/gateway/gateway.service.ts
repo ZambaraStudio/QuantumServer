@@ -5,15 +5,9 @@ import { Gateway } from './gateway';
 
 @Injectable()
 export class GatewayService {
+  constructor(private gateway: Gateway) {}
 
-  constructor(private gateway: Gateway){}
-  
   sendToeveryone(): void {
-    console.log( this.gateway.emitThingToEveryone(), "HIIII")
     this.gateway.emitThingToEveryone();
   }
-
-
-
-
 }
