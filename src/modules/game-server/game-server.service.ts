@@ -1,8 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { GameServerConfig, GameServerStatus } from './game-server.types';
 import { GameServer } from './game-server';
-import { PlayerData } from 'src/connection/connection.types';
-import { ConnectionService } from 'src/connection/connection.service';
+import { PlayerData } from 'src/modules/client-gateway/types/player.types';
+import { FROM_GS_EVENT_TYPES } from 'src/common/events/game-server.events';
 
 const serverListConst: Map<string, GameServerConfig> = new Map([
   [
@@ -12,17 +12,18 @@ const serverListConst: Map<string, GameServerConfig> = new Map([
         [
           '1111',
           {
-            playerId: '1111',
+            id: '1111',
+            name: '1111 name',
           },
         ],
         [
           '2222',
           {
-            playerId: '2222',
+            id: '2222',
+            name: '2222 name',
           },
         ],
       ]),
-      port: 3010,
       id: 'server-1-uuid',
       secret: 'server-1-secret',
     },
@@ -34,17 +35,18 @@ const serverListConst: Map<string, GameServerConfig> = new Map([
         [
           '3333',
           {
-            playerId: '3333',
+            id: '3333',
+            name: '3333 name',
           },
         ],
         [
           '4444',
           {
-            playerId: '4444',
+            id: '4444',
+            name: '4444 name',
           },
         ],
       ]),
-      port: 3011,
       id: 'server-2-uuid',
       secret: 'server-2-secret',
     },
@@ -56,32 +58,30 @@ export class GameServerService implements OnModuleInit {
   public gameServerList: Map<string, GameServer> = new Map();
   public gameServerConfigList: Map<string, GameServerConfig> = serverListConst;
 
-  constructor(private connectionService: ConnectionService) {}
+  constructor() {}
 
   onModuleInit() {
     this.gameServerConfigList.forEach((gameServerConfig) => {
       const gameServer = new GameServer({
         config: gameServerConfig,
-        onGenericMessage: (asd) => {
-          console.log(asd, 111111);
+      });
+
+      gameServer.fromGSEvents.on(
+        FROM_GS_EVENT_TYPES.GENERIC_MESSAGE,
+        (message) => {
+          console.log(message,11111);
         },
-        onServerConnected: () => {
-          console.log('CONNECTED!');
-        },
-        onServerCrash: () => {},
-        onServerDisconnected: () => {},
-        onServerDown: () => {
-          this.gameServerList.delete(gameServerConfig.id);
-        },
-        onServerStart: () => {},
-        onSystemMessage: (asd) => {
-          console.log(asd);
-        },
+      );
+
+      gameServer.fromGSEvents.on(GameServerStatus.STARTED_CONNECTED, () => {
+        console.log(`Server ${gameServerConfig.id} Connected!`);
+      });
+      gameServer.fromGSEvents.on('SHUTDOWN', () => {
+        this.gameServerList.delete(gameServerConfig.id);
       });
 
       this.gameServerList.set(gameServerConfig.id, gameServer);
       gameServer.startServer();
-      gameServer.connectToServer();
     });
   }
 
@@ -96,26 +96,7 @@ export class GameServerService implements OnModuleInit {
     })?.[1];
   }
 
-
-  //TODO: remove if not needed.
-  // when removing this also need to remove the controller completely
-  // and the call from the sdk
-  connectToGameServer(gameServerId: string, gameServerSecret: string) {
-    const gameServer = this.gameServerList.get(gameServerId);
-    console.log(
-      gameServerId,
-      gameServer?.status,
-      'STATUUUS',
-      gameServerSecret,
-      gameServer.config.secret,
-      gameServer?.status === GameServerStatus.STARTING &&
-        gameServerSecret == gameServer.config.secret,
-    );
-    if (
-      gameServer?.status === GameServerStatus.STARTING &&
-      gameServerSecret == gameServer.config.secret
-    ) {
-      // gameServer.connectToServer();
-    }
+  getServer(serverId: string) {
+    return this.gameServerList.get(serverId);
   }
 }
