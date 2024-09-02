@@ -64,9 +64,22 @@ export class ConnectionHandler<T> {
     );
   }
 
-  async getSocketConnectionsByEntityId(entityId: string) {
+  async getSocketConnectionsByEntityId(
+    entityId: string,
+  ): Promise<SocketConnection<T>[]> {
     const entityData = await this.getEntityData(entityId);
-    return entityData.socketConnections;
+    return Array.from(entityData.socketConnections).map((data) => data[1]);
+  }
+  async getSocketConnectionsByEntityIds(
+    entityIds: string[],
+  ): Promise<SocketConnection<T>[]> {
+    const connections: SocketConnection<T>[] = [];
+    for (const entityId of entityIds) {
+      const entityConnections =
+        await this.getSocketConnectionsByEntityId(entityId);
+      connections.push(...entityConnections);
+    }
+    return connections;
   }
 
   async removeSocketConnection(socketId: string) {

@@ -6,8 +6,8 @@ export const GS_EVENT_TYPES = {
 
 export const TO_GS_EVENT_TYPES = {
   ...GS_EVENT_TYPES,
-  PLAYER_CONNECTED: 'player-connected',
-  PLAYER_DISCONNECTED: 'player-disconnected',
+  PLAYERS_CONNECTED: 'players-connected',
+  PLAYERS_DISCONNECTED: 'players-disconnected',
 } as const;
 
 export const FROM_GS_EVENT_TYPES = {

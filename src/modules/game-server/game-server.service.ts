@@ -1,8 +1,9 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, forwardRef } from '@nestjs/common';
 import { GameServerConfig, GameServerStatus } from './game-server.types';
 import { GameServer } from './game-server';
-import { PlayerData } from 'src/modules/client-gateway/types/player.types';
 import { FROM_GS_EVENT_TYPES } from 'src/common/events/game-server.events';
+import { PlayerData } from 'src/modules/player-gateway/types/player.types';
+import { PlayerGatewayService } from 'src/modules/player-gateway/player-gateway.service';
 
 const serverListConst: Map<string, GameServerConfig> = new Map([
   [
@@ -58,7 +59,10 @@ export class GameServerService implements OnModuleInit {
   public gameServerList: Map<string, GameServer> = new Map();
   public gameServerConfigList: Map<string, GameServerConfig> = serverListConst;
 
-  constructor() {}
+  constructor(
+    @Inject(forwardRef(() => PlayerGatewayService))
+    private readonly playerGatewayService: PlayerGatewayService,
+  ) {}
 
   onModuleInit() {
     this.gameServerConfigList.forEach((gameServerConfig) => {
@@ -69,7 +73,18 @@ export class GameServerService implements OnModuleInit {
       gameServer.fromGSEvents.on(
         FROM_GS_EVENT_TYPES.GENERIC_MESSAGE,
         (message) => {
-          console.log(message,11111);
+          const sendToPlayerList = message.playerIds
+            ? message.playerIds.filter((playerId) => {
+                return gameServer.config.playerList.has(playerId);
+              })
+            : Array.from(gameServer.config.playerList).map((p) => {
+                return p[1].id;
+              });
+
+          this.playerGatewayService.sendGenericMessageToPlayers(
+            sendToPlayerList,
+            message,
+          );
         },
       );
 
@@ -82,6 +97,30 @@ export class GameServerService implements OnModuleInit {
 
       this.gameServerList.set(gameServerConfig.id, gameServer);
       gameServer.startServer();
+    });
+  }
+
+  sendPlayersConnected(players: PlayerData[]) {
+    const servers: Map<
+      string,
+      {
+        gameServer: GameServer;
+        playerData: PlayerData[];
+      }
+    > = new Map();
+    players.forEach((player) => {
+      const server = this.getUserServer(player.id);
+      if (!servers.has(server.config.id)) {
+        servers.set(server.config.id, {
+          gameServer: server,
+          playerData: [],
+        });
+      }
+      servers.get(server.config.id).playerData.push(player);
+    });
+
+    Array.from(servers).forEach((data) => {
+      data[1].gameServer.sendPlayersConnected(data[1].playerData);
     });
   }
 

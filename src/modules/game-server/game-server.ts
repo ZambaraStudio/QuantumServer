@@ -18,6 +18,7 @@ import {
   FromGSBaseMessage,
   FromGSEventMessageMappingType,
 } from 'src/common/message/game-server.message';
+import { PlayerData } from 'src/modules/player-gateway/types/player.types';
 
 type GameServerProp = {
   config: GameServerConfig;
@@ -50,7 +51,6 @@ export class GameServer {
           serverId: this.config.id,
           type: GameServerStatus.CRASHED,
         });
-        //this.gameServerList.delete(gameServerConfig.id);
       },
     );
 
@@ -83,7 +83,6 @@ export class GameServer {
 
   async sendPlayerPacket(playerId: string, message: BaseSocketMessage) {
     if (this.status == GameServerStatus.STARTED_CONNECTED) {
-      console.log(message.type, 'asdasdasdasdasd sending!!1');
       return await this.socket.emit(message.type, {
         playerId,
         ...message,
@@ -96,6 +95,13 @@ export class GameServer {
       return await this.socket.emit(TO_GS_EVENT_TYPES.GENERIC_MESSAGE, {
         playerId,
         ...message,
+      });
+    }
+  }
+  async sendPlayersConnected(playerData: PlayerData[]) {
+    if (this.status == GameServerStatus.STARTED_CONNECTED) {
+      return await this.socket.emit(TO_GS_EVENT_TYPES.PLAYERS_CONNECTED, {
+        players: playerData,
       });
     }
   }

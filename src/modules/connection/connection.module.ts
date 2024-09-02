@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConnectionService } from './connection.service';
+import { ConnectionService } from 'src/modules/connection/connection.service';
 
 @Module({
   imports: [],

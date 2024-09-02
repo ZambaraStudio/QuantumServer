@@ -1,67 +1,59 @@
 // import { SessionData } from "src/modules/sessions/dynamodb/dynamo-session.entity";
-import { DynamoDB, Credentials } from "aws-sdk";
-import { Entity, Table } from "dynamodb-onetable";
-import { Dynamo } from "dynamodb-onetable/Dynamo";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { v4 } from "uuid";
-import { Schema, SessionDataObjectEntityType, getConnection } from "./dynamodb-setup";
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { DynamoDB, Credentials } from 'aws-sdk';
+import { Entity, Table } from 'dynamodb-onetable';
+import { Dynamo } from 'dynamodb-onetable/Dynamo';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { v4 } from 'uuid';
+import {
+  Schema,
+  SessionDataObjectEntityType,
+  getConnection,
+} from './dynamodb-setup';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 @Injectable()
 export class DynamoDBService implements OnModuleInit {
-	private table: Table;
-	private client: Dynamo;
-	private dynamoDB: DynamoDB;
+  private table: Table;
+  private client: Dynamo;
+  private dynamoDB: DynamoDB;
 
-	constructor() {
-		// const config = configService.getConfig();
-		const { client, table} = getConnection();
-		this.table = table;
-		this.client = client;
-	}
+  constructor() {
+    // const config = configService.getConfig();
+    const { client, table } = getConnection();
+    this.table = table;
+    this.client = client;
+  }
 
-	getConnection() {
-		return this.client;
-	}
-	getTest(){
+  getConnection() {
+    return this.client;
+  }
+  getTest() {
+    return new Date();
+  }
 
-		return new Date();
-	}
+  async insertTest() {
+    const SessionModel =
+      this.table.getModel<SessionDataObjectEntityType>('SessionDataObject');
 
-	async insertTest(){
-		
-	const SessionModel = this.table.getModel<SessionDataObjectEntityType>("SessionDataObject");
+    return await SessionModel.create({
+      gameId: Date.now().toString(),
+      socketId: Date.now().toFixed(2),
+      userId: 'asdasda',
+    });
 
-	
-	
-		return await SessionModel.create({
-			gameId: Date.now().toString(),
-			socketId: Date.now().toFixed(2),
-			userId: "asdasda"
-		});
-	
+    return {};
+  }
 
-	return {};
-
-	}
-
-	async onModuleInit(): Promise<void> {
-		const tableExists = await this.table.exists();
-		console.log(tableExists,111)
-		if (tableExists) {
-			await this.table.describeTable();
-		} else {
-			await this.table.createTable();
-		}
-	}
+  async onModuleInit(): Promise<void> {
+    const tableExists = await this.table.exists();
+    console.log(tableExists, 111);
+    if (tableExists) {
+      await this.table.describeTable();
+    } else {
+      await this.table.createTable();
+    }
+  }
 }
-
-
-
-
-
-
-
 
 // async getSessionDataWithSessionToken(
 // 	sessionToken: string,
@@ -164,7 +156,6 @@ export class DynamoDBService implements OnModuleInit {
 // 			index: "gs1",
 // 		},
 // 	);
-
 
 // 	if (sessionDataObject) {
 // 		const updatedSession = (await SessionDataObjectModel.update({

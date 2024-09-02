@@ -1,4 +1,4 @@
-import { PlayerData } from 'src/modules/client-gateway/types/player.types';
+import { PlayerData } from 'src/modules/player-gateway/types/player.types';
 
 export type GameServerConfig = {
   id: string;

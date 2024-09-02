@@ -5,10 +5,9 @@ import {
 import { BaseSocketMessage } from 'src/common/message/base.message';
 import { GameServerStatusType } from 'src/modules/game-server/game-server.types';
 
-export type ToGSBaseMessage<T = unknown> = BaseSocketMessage<T> & {
-  playerId?: string;
-};
+export type ToGSBaseMessage<T = unknown> = BaseSocketMessage<T>;
 export type FromGSBaseMessage<T = unknown> = BaseSocketMessage<T> & {
+  playerIds?: string[];
   serverId: string;
 };
 
