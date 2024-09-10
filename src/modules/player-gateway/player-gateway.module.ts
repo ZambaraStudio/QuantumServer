@@ -1,10 +1,11 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { PlayerGatewayService } from './player-gateway.service';
 import { PlayerGateway } from './player-gateway';
-import { GameServerModule } from 'src/modules/game-server/game-server.module';
+import { RedisModule } from 'src/modules/redis/redis.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [forwardRef(() => GameServerModule)],
+  imports: [RedisModule, ScheduleModule.forRoot()],
   providers: [PlayerGatewayService, PlayerGateway],
   exports: [PlayerGatewayService],
 })

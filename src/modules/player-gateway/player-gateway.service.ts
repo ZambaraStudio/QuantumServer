@@ -1,99 +1,118 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConnectionHandler } from 'src/common/connection-handler/connection-handler';
 import {
+  FromPlayerGenericMessage,
   ToPlayerBaseMessage,
-  ToPlayerGenericMessage,
-  ToPlayerServerStatus,
 } from 'src/common/message/player.message';
-import { GameServerService } from 'src/modules/game-server/game-server.service';
-import { GameServerStatus } from 'src/modules/game-server/game-server.types';
-import {
-  TO_PLAYER_EVENT_TYPES,
-  ToPlayerEventType,
-} from 'src/common/events/player.events';
+import { TO_PLAYER_EVENT_TYPES } from 'src/common/events/player.events';
 import { PlayerData } from 'src/modules/player-gateway/types/player.types';
+import { RedisService } from 'src/modules/redis/redis.service';
+import { Socket } from 'socket.io';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import {
+  getGameInstanceMessagesKey,
+  getPlayerHeartbeatKey,
+} from 'src/common/access-patterns/access-patterns';
+import { addPlayerToGameInstance } from 'src/modules/player-gateway/helper-methods/add-player-to-server';
 
 @Injectable()
 export class PlayerGatewayService {
   public connectionHandler: ConnectionHandler<PlayerData>;
 
-  constructor(
-    @Inject(forwardRef(() => GameServerService))
-    private readonly gameServerService: GameServerService,
-  ) {
+  constructor(private readonly redisService: RedisService) {
     this.connectionHandler = new ConnectionHandler<PlayerData>();
   }
 
   async handleGenericMessage(
     socketId: string,
-    message: ToPlayerGenericMessage,
+    message: FromPlayerGenericMessage,
   ) {
     const playerData =
       await this.connectionHandler.getEntityDataBySocketId(socketId);
     if (!playerData) {
       return;
     }
-    const gameServer = this.gameServerService.getUserServer(playerData.id);
-    if (!gameServer) {
-      return;
-    }
 
-    gameServer.sendPlayerGenericMessage(playerData.id, message);
+    await this.redisService.client.rPush(
+      getGameInstanceMessagesKey(playerData.data.gameInstance?.id),
+      JSON.stringify({
+        type: 'generic-message',
+        data: message,
+        playerId: playerData.id,
+      }),
+    );
   }
 
-  async handleGetAuth(socketId: string): Promise<ToPlayerServerStatus> {
+  async handleGetAuth(socketId: string): Promise<ToPlayerBaseMessage> {
     const playerData =
       await this.connectionHandler.getEntityDataBySocketId(socketId);
     if (!playerData) {
       return;
-    }
-    const gameServer = this.gameServerService.getUserServer(playerData.id);
-
-    if (!gameServer) {
-      return {
-        type: TO_PLAYER_EVENT_TYPES.GAME_SERVER_STATUS,
-        data: {
-          status: GameServerStatus.STARTING,
-        },
-      };
     }
 
     return {
       type: TO_PLAYER_EVENT_TYPES.GAME_SERVER_STATUS,
-      data: {
-        status: gameServer.status,
-      },
     };
   }
 
-  async sendMessageToPlayers(
-    playerIds: string[],
-    eventType: ToPlayerEventType,
-    message: ToPlayerBaseMessage,
+  async handlePlayerConnect(
+    socket: Socket,
+    playerId: string,
+    playerData: PlayerData,
   ) {
-    const connections =
-      await this.connectionHandler.getSocketConnectionsByEntityIds(playerIds);
-
-    connections.forEach((connection) => {
-      connection.socket.emit(eventType, message);
-    });
-  }
-  async sendGenericMessageToPlayers(
-    playerIds: string[],
-    message: ToPlayerBaseMessage,
-  ) {
-    const connections =
-      await this.connectionHandler.getSocketConnectionsByEntityIds(playerIds);
-    connections.forEach((connection) => {
-      console.log(message.type);
-      connection.socket.emit(TO_PLAYER_EVENT_TYPES.GENERIC_MESSAGE, {
-        data: message.data,
-        type: message.type,
+    const connectedPlayer =
+      await this.connectionHandler.addEntityDataToSocketConnection(socket, {
+        id: playerId,
+        data: playerData,
       });
-    });
+
+    await this.redisService.addPlayerSubscriptionIfNotExists(
+      playerId,
+      (message: string) => {
+        const messageJSON = JSON.parse(message);
+        connectedPlayer.socketConnections.forEach((connection) => {
+          connection.socket.emit(
+            TO_PLAYER_EVENT_TYPES.GENERIC_MESSAGE,
+            messageJSON,
+          );
+        });
+      },
+    );
+
+    if (connectedPlayer.data.gameInstance) {
+      await addPlayerToGameInstance(
+        this.redisService.client,
+        connectedPlayer.data,
+        connectedPlayer.data.gameInstance.id,
+      );
+    }
   }
 
-  async playerConnected(playerData: PlayerData) {
-    this.gameServerService.sendPlayersConnected([playerData]);
+  async handlePlayerDisconnect(socketId: string) {
+    const playerData =
+      await this.connectionHandler.getEntityDataBySocketId(socketId);
+    await this.connectionHandler.removeSocketConnection(socketId);
+    if (playerData.socketConnections.size == 0) {
+      this.redisService.destroyPlayerSubscription(playerData.id);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_SECOND)
+  async syncSocketsToRedis() {
+    const allSocketConnections =
+      await this.connectionHandler.getAllSocketConnections();
+
+    const connectedPlayers: { [key: string]: string } = {};
+    const timeStamp = Date.now().toString();
+    const connectionArray = Array.from(allSocketConnections);
+    if (connectionArray.length) {
+      connectionArray.forEach(([, socketConnection]) => {
+        connectedPlayers[
+          getPlayerHeartbeatKey(socketConnection.entityData.id)
+        ] = timeStamp;
+      });
+
+      await this.redisService.client.mSet(connectedPlayers);
+    }
   }
 }

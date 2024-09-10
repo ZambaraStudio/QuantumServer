@@ -62,6 +62,8 @@ export class ConnectionHandler<T> {
       newSocketConnection.entityData.id,
       newSocketConnection.entityData,
     );
+
+    return newSocketConnection.entityData;
   }
 
   async getSocketConnectionsByEntityId(
@@ -102,6 +104,10 @@ export class ConnectionHandler<T> {
 
   async getSocketCount() {
     return this.entitySocketConnections.size;
+  }
+
+  async getAllSocketConnections() {
+    return this.entitySocketConnections;
   }
 
   async getEntityCount() {

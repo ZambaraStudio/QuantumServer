@@ -9,7 +9,10 @@ import {
 import { PlayerGatewayService } from './player-gateway.service';
 import { ConnectedEntityData } from 'src/common/connection-handler/connection.types';
 
-import { FROM_PLAYER_EVENT_TYPES } from 'src/common/events/player.events';
+import {
+  FROM_PLAYER_EVENT_TYPES,
+  TO_PLAYER_EVENT_TYPES,
+} from 'src/common/events/player.events';
 import {
   ToPlayerGenericMessage,
   ToPlayerServerStatus,
@@ -24,10 +27,8 @@ export class PlayerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private playerGatewayService: PlayerGatewayService) {}
 
   async handleDisconnect(socket: Socket) {
-    await this.playerGatewayService.connectionHandler.removeSocketConnection(
-      socket.id,
-    );
-    this.emitThingToEveryone();
+    await this.playerGatewayService.handlePlayerDisconnect(socket.id);
+    // this.emitThingToEveryone();
   }
 
   async handleConnection(socket: Socket) {
@@ -36,33 +37,23 @@ export class PlayerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!authentication) {
       return socket.disconnect();
     }
-    await this.playerGatewayService.connectionHandler.addEntityDataToSocketConnection(
+    await this.playerGatewayService.handlePlayerConnect(
       socket,
-      {
-        id: authentication.data.id,
-        data: authentication.data,
-      },
+      authentication.data.id,
+      authentication.data,
     );
-    const playerData =
-      await this.playerGatewayService.connectionHandler.getEntityDataBySocketId(
-        socket.id,
-      );
-
-    this.playerGatewayService.playerConnected(playerData.data);
-
-    // this.emitThingToEveryone();
   }
 
-  async emitThingToEveryone() {
-    const playerCount =
-      await this.playerGatewayService.connectionHandler.getEntityCount();
-    const socketCount =
-      await this.playerGatewayService.connectionHandler.getSocketCount();
-    this.server.emit('connected-players', {
-      playerCount,
-      socketCount,
-    });
-  }
+  // async emitThingToEveryone() {
+  //   const playerCount =
+  //     await this.playerGatewayService.connectionHandler.getEntityCount();
+  //   const socketCount =
+  //     await this.playerGatewayService.connectionHandler.getSocketCount();
+  //   this.server.emit('connected-players', {
+  //     playerCount,
+  //     socketCount,
+  //   });
+  // }
 
   @SubscribeMessage(FROM_PLAYER_EVENT_TYPES.GENERIC_MESSAGE)
   private async onGenericMessage(
@@ -73,8 +64,13 @@ export class PlayerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage(FROM_PLAYER_EVENT_TYPES.GAME_SERVER_STATUS)
-  private async onGetAuth(socket: Socket): Promise<ToPlayerServerStatus> {
-    return await this.playerGatewayService.handleGetAuth(socket.id);
+  private async onGetAuth(): Promise<ToPlayerServerStatus> {
+    return Promise.resolve({
+      type: TO_PLAYER_EVENT_TYPES.GAME_SERVER_STATUS,
+      data: {
+        status: true,
+      },
+    });
   }
 
   public async verifyAuthToken(
@@ -91,6 +87,9 @@ export class PlayerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       data: {
         id: authToken,
         name: 'id' + authToken,
+        gameInstance: {
+          id: 'entry1',
+        },
       },
     };
   }
