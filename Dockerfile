@@ -8,7 +8,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Step 4: Install app dependencies (npm ci installs from package-lock.json)
-RUN npm ci --only=production
+RUN npm ci
 
 # Step 5: Copy the rest of the application code
 COPY . .
@@ -16,8 +16,11 @@ COPY . .
 # Step 6: Build the NestJS application (optional step if using build process)
 RUN npm run build
 
-# Step 7: Expose the port the app runs on
-EXPOSE 3000
+# Step 7: Remove dev dependencies
+RUN npm prune --production
 
-# Step 8: Command to run the application
+# Step 8: Expose the port the app runs on
+EXPOSE 3005
+
+# Step 9: Command to run the application
 CMD ["npm", "run", "start:prod"]
