@@ -6,9 +6,9 @@ services:
     container_name: redis2
     ports:
       - "6379:6379"  # Expose Redis on the default port
-  quantum-server:
-    image: levansuper/quantum-server
-    container_name: quantum-server
+  quantum-server-client-service:
+    image: levansuper/quantum-server-client-service
+    container_name: quantum-server-client-service
     environment:
       - REDIS_HOST=redis2
       - REDIS_PORT=6379
