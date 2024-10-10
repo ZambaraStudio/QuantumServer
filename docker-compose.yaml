@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  redis2:
+    image: redis:latest
+    container_name: redis2
+    ports:
+      - "6379:6379"  # Expose Redis on the default port
+  quantum-server:
+    image: levansuper/quantum-server
+    container_name: quantum-server
+    environment:
+      - REDIS_HOST=redis2
+      - REDIS_PORT=6379
+    ports:
+      - "3005:3005"  # Adjust if necessary for your application
+    depends_on:
+      - redis2
